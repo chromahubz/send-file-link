@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SEND FILE LINK</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "qrcode": "https://esm.sh/qrcode@1.5.3"
+    }
+  }
+  </script>
+</head>
+<body data-theme="light">
+  <div class="app">
+    <header class="glass header">
+      <h1 class="title">SEND FILE LINK</h1>
+      <div class="share">
+        <input id="shareUrl" class="share-input" type="text" readonly>
+        <button id="copyBtn" class="btn">Copy link</button>
+        <button id="qrBtn" class="btn btn-quiet" aria-label="Show QR">QR</button>
+        <button id="shareBtn" class="btn">Share</button>
+        <button id="newBoardBtn" class="btn btn-quiet">New board</button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="glass panel">
+        <div class="panel-head">
+          <h2>Text</h2>
+          <span id="saveStatus" class="status">Saved</span>
+        </div>
+        <textarea id="textArea" class="text-area" placeholder="Paste or type text here..."></textarea>
+      </section>
+
+      <section class="glass panel">
+        <div class="panel-head">
+          <h2>Media</h2>
+          <div class="upload-actions">
+            <input id="fileInput" type="file" accept="image/*,video/*,audio/*" multiple hidden>
+            <button id="uploadBtn" class="btn">Upload</button>
+          </div>
+        </div>
+        <div id="dropZone" class="dropzone">Drag & drop media here (images, videos, audio)</div>
+        <div id="gallery" class="gallery"></div>
+      </section>
+    </main>
+
+    <footer class="glass footer">
+      <div id="notice" class="notice" role="status" aria-live="polite"></div>
+      <div class="meta">
+        <span id="boardIdLabel"></span>
+      </div>
+    </footer>
+  </div>
+
+  <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true">
+    <button id="lightboxClose" class="lightbox-close" aria-label="Close">×</button>
+    <img id="lightboxImg" alt="">
+    <a id="lightboxDownload" class="btn dl" download>Download</a>
+  </div>
+
+  <div id="shareModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <div class="modal-body glass">
+      <h3 id="shareTitle">Share options</h3>
+      <label class="modal-row">
+        Custom link
+        <input id="slugInput" type="text" placeholder="custom-slug (optional)" />
+      </label>
+      <label class="modal-row">
+        Duration
+        <div class="select"><select id="expirySelect">
+          <option value="3600">1 hour</option>
+          <option value="86400">1 day</option>
+          <option value="604800">7 days</option>
+          <option value="2592000">30 days</option>
+        </select></div>
+      </label>
+      <div class="modal-actions">
+        <button id="shareCancel" class="btn btn-quiet">Cancel</button>
+        <button id="shareConfirm" class="btn">Share now</button>
+      </div>
+      <div id="shareResult" class="modal-row hidden">
+        <span style="margin-bottom: 8px; display: block; font-weight: 500;">Share Link</span>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <input id="shareResultInput" type="text" readonly style="flex: 1;" />
+          <button id="shareCopy" class="btn icon-only" aria-label="Copy">📋</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="qrModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
+    <div class="modal-body glass">
+      <h3 id="qrTitle">QR Code</h3>
+      <div id="qrCode" class="qr-code"></div>
+      <button id="qrClose" class="btn">Close</button>
+    </div>
+  </div>
+
+  <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+    <span class="theme-icon">🌙</span>
+  </button>
+
+  <script src="./app.js" type="module"></script>
+</body>
+</html>

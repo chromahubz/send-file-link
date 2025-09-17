@@ -1,0 +1,20 @@
+{
+  "name": "send-file-link",
+  "version": "1.0.0",
+  "description": "Modern file sharing tool with glassmorphic UI",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step needed'",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@vercel/blob": "^0.15.1",
+    "@vercel/kv": "^1.0.1",
+    "@vercel/postgres": "^0.5.1",
+    "formidable": "^3.5.1"
+  },
+  "keywords": ["file-sharing", "vercel", "glassmorphism"],
+  "author": "",
+  "license": "MIT"
+}
