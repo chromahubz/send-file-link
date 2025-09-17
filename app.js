@@ -197,12 +197,25 @@ class SendFileLinkApp {
   }
 
   async loadOrCreateBoard() {
-    // Get board ID from URL or create new one
+    // Get board ID from URL path or query params
+    const path = window.location.pathname;
     const urlParams = new URLSearchParams(window.location.search);
-    const boardParam = urlParams.get('board') || urlParams.get('b');
 
-    if (boardParam) {
-      this.boardId = boardParam;
+    let boardId = null;
+
+    // Check for path-based routing (e.g., /share/slug or /board123)
+    if (path.startsWith('/share/')) {
+      boardId = path.replace('/share/', '');
+    } else if (path !== '/' && path !== '') {
+      // Handle direct board URLs like /board123
+      boardId = path.substring(1); // Remove leading slash
+    } else {
+      // Check for query parameters as fallback
+      boardId = urlParams.get('board') || urlParams.get('b');
+    }
+
+    if (boardId) {
+      this.boardId = boardId;
       await this.loadBoard();
     } else {
       await this.createNewBoard();
@@ -528,14 +541,14 @@ class SendFileLinkApp {
 
     try {
       if (this.mockMode) {
-        // Mock mode: generate demo share link
-        const slug = customSlug || `demo-${Math.random().toString(36).substr(2, 8)}`;
+        // Mock mode: use actual board ID for sharing
+        const slug = customSlug || this.boardId;
         const shareUrl = `${window.location.origin}/share/${slug}`;
         this.elements.shareResultInput.value = shareUrl;
         this.elements.shareResult.classList.remove('hidden');
         // Update the main link in header too
         this.elements.shareUrl.value = shareUrl;
-        this.showNotice('Demo share link created!', 'success');
+        this.showNotice('Share link created!', 'success');
         return;
       }
 
