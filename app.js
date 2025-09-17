@@ -381,10 +381,30 @@ class SendFileLinkApp {
   }
 
   async saveBoardData() {
+    // Get current media from existing board data
+    let currentMedia = [];
+
+    if (this.mockMode && this.mockData.boards[this.boardId]) {
+      currentMedia = this.mockData.boards[this.boardId].media || [];
+    } else if (!this.mockMode) {
+      // Try to get current board data to preserve media
+      try {
+        const response = await fetch(`${this.apiBaseUrl}/boards/${this.boardId}`);
+        if (response.ok) {
+          const existingBoard = await response.json();
+          currentMedia = existingBoard.media || [];
+        }
+      } catch (error) {
+        console.log('No existing board found, using empty media array');
+      }
+    }
+
     const boardData = {
       id: this.boardId,
       text: this.elements.textArea.value,
-      lastModified: new Date().toISOString()
+      media: currentMedia,
+      lastModified: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
     try {
@@ -601,6 +621,11 @@ class SendFileLinkApp {
     const expirySeconds = parseInt(this.elements.expirySelect.value);
 
     try {
+      // Ensure board is saved first before creating share link
+      if (!this.mockMode) {
+        await this.saveBoardData();
+      }
+
       if (this.mockMode) {
         // Mock mode: create share mapping in localStorage
         const slug = customSlug || this.boardId;
