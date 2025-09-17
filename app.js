@@ -5,7 +5,7 @@ class SendFileLinkApp {
     this.boardId = null;
     this.saveTimeout = null;
     this.apiBaseUrl = '/api';
-    this.mockMode = true; // Enable mock mode for demo
+    this.mockMode = false; // Use real Blob storage
     this.mockData = {
       boards: {},
       media: []

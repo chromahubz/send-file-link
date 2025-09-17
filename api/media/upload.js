@@ -1,5 +1,4 @@
 import { put } from '@vercel/blob';
-import { addMediaToBoard } from '../../lib/db.js';
 import formidable from 'formidable';
 import { readFileSync } from 'fs';
 
@@ -13,6 +12,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: `Method ${req.method} not allowed` });
+  }
+
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return res.status(500).json({ error: 'Blob storage not configured' });
   }
 
   try {
@@ -40,7 +43,7 @@ export default async function handler(req, res) {
 
     // Generate unique filename
     const timestamp = Date.now();
-    const uniqueFileName = `${timestamp}-${originalName}`;
+    const uniqueFileName = `media/${timestamp}-${originalName}`;
 
     // Upload to Vercel Blob
     const blob = await put(uniqueFileName, fileBuffer, {
@@ -58,14 +61,44 @@ export default async function handler(req, res) {
       uploadedAt: new Date().toISOString(),
     };
 
-    // Add to board
-    const updatedBoard = await addMediaToBoard(boardId, mediaItem);
+    // Get current board data and add media item
+    try {
+      const response = await fetch(`https://kw26seg4s0irkrho.public.blob.vercel-storage.com/boards/${boardId}.json`);
+      let boardData;
 
-    return res.status(200).json({
-      message: 'File uploaded successfully',
-      mediaItem,
-      board: updatedBoard,
-    });
+      if (response.ok) {
+        boardData = await response.json();
+      } else {
+        // Create new board if it doesn't exist
+        boardData = {
+          id: boardId,
+          text: '',
+          media: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      // Add media item to board
+      boardData.media.push(mediaItem);
+      boardData.updatedAt = new Date().toISOString();
+
+      // Save updated board data
+      await put(`boards/${boardId}.json`, JSON.stringify(boardData), {
+        access: 'public',
+        contentType: 'application/json'
+      });
+
+      return res.status(200).json({
+        message: 'File uploaded successfully',
+        mediaItem,
+        board: boardData,
+      });
+
+    } catch (error) {
+      console.error('Board update error:', error);
+      return res.status(500).json({ error: 'Failed to update board with media item' });
+    }
 
   } catch (error) {
     console.error('Upload error:', error);

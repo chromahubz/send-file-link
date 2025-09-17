@@ -1,4 +1,4 @@
-import { getBoardData, setBoardData, deleteMediaFromBoard } from '../../lib/db.js';
+import { put, head, del } from '@vercel/blob';
 
 export default async function handler(req, res) {
   const { id: boardId } = req.query;
@@ -7,33 +7,74 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Board ID is required' });
   }
 
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return res.status(500).json({ error: 'Blob storage not configured' });
+  }
+
   try {
     switch (req.method) {
       case 'GET':
-        const boardData = await getBoardData(boardId);
-
-        if (!boardData) {
+        // Get board data from blob storage
+        try {
+          const response = await fetch(`https://kw26seg4s0irkrho.public.blob.vercel-storage.com/boards/${boardId}.json`);
+          if (!response.ok) {
+            return res.status(404).json({ error: 'Board not found' });
+          }
+          const boardData = await response.json();
+          return res.status(200).json(boardData);
+        } catch (error) {
           return res.status(404).json({ error: 'Board not found' });
         }
 
-        return res.status(200).json(boardData);
-
       case 'PUT':
-        const updatedBoard = await setBoardData(boardId, req.body);
-        return res.status(200).json(updatedBoard);
+        // Save board data to blob storage
+        const boardData = {
+          id: boardId,
+          text: req.body.text || '',
+          media: req.body.media || [],
+          createdAt: req.body.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        const { url } = await put(`boards/${boardId}.json`, JSON.stringify(boardData), {
+          access: 'public',
+          contentType: 'application/json'
+        });
+
+        return res.status(200).json(boardData);
 
       case 'DELETE':
         // For deleting specific media by index
         const { mediaIndex } = req.query;
 
         if (mediaIndex !== undefined) {
-          const updatedBoardData = await deleteMediaFromBoard(boardId, parseInt(mediaIndex));
-          return res.status(200).json(updatedBoardData);
+          // Get current board data, remove media item, and save back
+          try {
+            const response = await fetch(`https://kw26seg4s0irkrho.public.blob.vercel-storage.com/boards/${boardId}.json`);
+            if (response.ok) {
+              const boardData = await response.json();
+              boardData.media.splice(parseInt(mediaIndex), 1);
+              boardData.updatedAt = new Date().toISOString();
+
+              await put(`boards/${boardId}.json`, JSON.stringify(boardData), {
+                access: 'public',
+                contentType: 'application/json'
+              });
+
+              return res.status(200).json(boardData);
+            }
+          } catch (error) {
+            return res.status(404).json({ error: 'Board not found' });
+          }
         }
 
         // Delete entire board
-        await kv.del(`board:${boardId}`);
-        return res.status(200).json({ message: 'Board deleted' });
+        try {
+          await del(`https://kw26seg4s0irkrho.public.blob.vercel-storage.com/boards/${boardId}.json`);
+          return res.status(200).json({ message: 'Board deleted' });
+        } catch (error) {
+          return res.status(404).json({ error: 'Board not found' });
+        }
 
       default:
         res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
