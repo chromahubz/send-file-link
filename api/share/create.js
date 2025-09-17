@@ -1,9 +1,13 @@
-import { createShareLink } from '../../lib/db.js';
+import { put } from '@vercel/blob';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: `Method ${req.method} not allowed` });
+  }
+
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return res.status(500).json({ error: 'Blob storage not configured' });
   }
 
   try {
@@ -36,22 +40,43 @@ export default async function handler(req, res) {
       });
     }
 
-    const shareLink = await createShareLink(boardId, customSlug, expirySeconds);
+    // Generate slug (use custom or boardId)
+    const slug = customSlug || boardId;
+
+    // Check if slug already exists
+    try {
+      const existingResponse = await fetch(`https://kw26seg4s0irkrho.public.blob.vercel-storage.com/shares/${slug}.json`);
+      if (existingResponse.ok) {
+        return res.status(409).json({ error: 'Custom slug already exists' });
+      }
+    } catch (error) {
+      // Slug doesn't exist, continue
+    }
+
+    // Create share mapping
+    const shareMapping = {
+      slug,
+      boardId,
+      createdAt: new Date().toISOString(),
+      expirySeconds,
+      expiresAt: new Date(Date.now() + expirySeconds * 1000).toISOString()
+    };
+
+    // Save share mapping to blob storage
+    await put(`shares/${slug}.json`, JSON.stringify(shareMapping), {
+      access: 'public',
+      contentType: 'application/json'
+    });
 
     return res.status(200).json({
       message: 'Share link created successfully',
-      slug: shareLink.slug,
-      expiresAt: shareLink.expires_at,
-      boardId: shareLink.board_id
+      slug,
+      expiresAt: shareMapping.expiresAt,
+      boardId: shareMapping.boardId
     });
 
   } catch (error) {
-    console.error('Share link creation error:', error);
-
-    if (error.message.includes('already exists')) {
-      return res.status(409).json({ error: error.message });
-    }
-
+    console.error('Share create error:', error);
     return res.status(500).json({
       error: error.message || 'Failed to create share link'
     });

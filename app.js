@@ -232,12 +232,35 @@ class SendFileLinkApp {
     // Check for path-based routing (e.g., /share/slug or /board123)
     if (path.startsWith('/share/')) {
       const slug = path.replace('/share/', '');
-      // Look up the actual board ID from share mapping
-      if (this.mockData.shareMap && this.mockData.shareMap[slug]) {
-        boardId = this.mockData.shareMap[slug].boardId;
+
+      if (this.mockMode) {
+        // Mock mode: Look up from localStorage
+        if (this.mockData.shareMap && this.mockData.shareMap[slug]) {
+          boardId = this.mockData.shareMap[slug].boardId;
+        } else {
+          boardId = slug;
+        }
       } else {
-        // Fallback: use slug as board ID (for simple cases)
-        boardId = slug;
+        // Real mode: Look up share mapping from blob storage
+        try {
+          const shareResponse = await fetch(`https://kw26seg4s0irkrho.public.blob.vercel-storage.com/shares/${slug}.json`);
+          if (shareResponse.ok) {
+            const shareData = await shareResponse.json();
+            // Check if expired
+            if (new Date() > new Date(shareData.expiresAt)) {
+              this.showNotice('Share link has expired', 'error');
+              await this.createNewBoard();
+              return;
+            }
+            boardId = shareData.boardId;
+          } else {
+            // Share not found, use slug as board ID
+            boardId = slug;
+          }
+        } catch (error) {
+          console.error('Error loading share mapping:', error);
+          boardId = slug;
+        }
       }
     } else if (path !== '/' && path !== '') {
       // Handle direct board URLs like /board123
