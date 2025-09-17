@@ -307,7 +307,8 @@ class SendFileLinkApp {
       this.showNotice('New board created!', 'success');
     } catch (error) {
       console.error('Error creating board:', error);
-      this.showNotice('Demo mode: Creating new board', 'info');
+      console.error('API Error details:', error.message, error.stack);
+      this.showNotice(`API Error: ${error.message}. Falling back to demo mode.`, 'error');
       // Fallback to mock mode
       this.mockMode = true;
       await this.createNewBoard();
@@ -342,7 +343,8 @@ class SendFileLinkApp {
       }
     } catch (error) {
       console.error('Error loading board:', error);
-      this.showNotice('Running in demo mode - API not available', 'info');
+      console.error('Load Board API Error details:', error.message, error.stack);
+      this.showNotice(`Load API Error: ${error.message}. Running in demo mode.`, 'error');
       // Fallback to mock mode
       this.mockMode = true;
       await this.loadBoard();
