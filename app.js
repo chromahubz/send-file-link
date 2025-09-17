@@ -6,14 +6,40 @@ class SendFileLinkApp {
     this.saveTimeout = null;
     this.apiBaseUrl = '/api';
     this.mockMode = false; // Use real Blob storage
-    this.mockData = {
-      boards: {},
-      media: []
-    };
+    this.initializeMockStorage();
 
     this.initializeApp();
     this.setupEventListeners();
     this.loadOrCreateBoard();
+  }
+
+  initializeMockStorage() {
+    // Initialize or load from localStorage for persistent mock data
+    const storedData = localStorage.getItem('sendFileLink_mockData');
+    if (storedData) {
+      try {
+        this.mockData = JSON.parse(storedData);
+      } catch (error) {
+        console.error('Error parsing stored mock data:', error);
+        this.mockData = { boards: {}, media: [], shareMap: {} };
+      }
+    } else {
+      this.mockData = { boards: {}, media: [], shareMap: {} };
+    }
+
+    // Ensure shareMap exists
+    if (!this.mockData.shareMap) {
+      this.mockData.shareMap = {};
+    }
+  }
+
+  saveMockStorage() {
+    // Save mock data to localStorage for persistence
+    try {
+      localStorage.setItem('sendFileLink_mockData', JSON.stringify(this.mockData));
+    } catch (error) {
+      console.error('Error saving mock data to localStorage:', error);
+    }
   }
 
   initializeApp() {
@@ -205,7 +231,14 @@ class SendFileLinkApp {
 
     // Check for path-based routing (e.g., /share/slug or /board123)
     if (path.startsWith('/share/')) {
-      boardId = path.replace('/share/', '');
+      const slug = path.replace('/share/', '');
+      // Look up the actual board ID from share mapping
+      if (this.mockData.shareMap && this.mockData.shareMap[slug]) {
+        boardId = this.mockData.shareMap[slug].boardId;
+      } else {
+        // Fallback: use slug as board ID (for simple cases)
+        boardId = slug;
+      }
     } else if (path !== '/' && path !== '') {
       // Handle direct board URLs like /board123
       boardId = path.substring(1); // Remove leading slash
@@ -236,8 +269,9 @@ class SendFileLinkApp {
 
     try {
       if (this.mockMode) {
-        // Mock mode: save to memory
+        // Mock mode: save to localStorage
         this.mockData.boards[this.boardId] = boardData;
+        this.saveMockStorage();
         this.updateURL();
         this.updateUI();
         this.populateBoard(boardData);
@@ -330,7 +364,7 @@ class SendFileLinkApp {
 
     try {
       if (this.mockMode) {
-        // Mock mode: save to memory
+        // Mock mode: save to localStorage
         if (!this.mockData.boards[this.boardId]) {
           this.mockData.boards[this.boardId] = {
             id: this.boardId,
@@ -341,6 +375,7 @@ class SendFileLinkApp {
         }
         this.mockData.boards[this.boardId].text = boardData.text;
         this.mockData.boards[this.boardId].lastModified = boardData.lastModified;
+        this.saveMockStorage();
         this.showStatus('Saved (demo)', 'success');
         return;
       }
@@ -424,6 +459,7 @@ class SendFileLinkApp {
           };
         }
         this.mockData.boards[this.boardId].media.push(mediaItem);
+        this.saveMockStorage();
 
         resolve(mediaItem);
       };
@@ -541,9 +577,21 @@ class SendFileLinkApp {
 
     try {
       if (this.mockMode) {
-        // Mock mode: use actual board ID for sharing
+        // Mock mode: create share mapping in localStorage
         const slug = customSlug || this.boardId;
         const shareUrl = `${window.location.origin}/share/${slug}`;
+
+        // Store share mapping for later retrieval
+        if (!this.mockData.shareMap) {
+          this.mockData.shareMap = {};
+        }
+        this.mockData.shareMap[slug] = {
+          boardId: this.boardId,
+          createdAt: new Date().toISOString(),
+          expirySeconds: expirySeconds
+        };
+        this.saveMockStorage();
+
         this.elements.shareResultInput.value = shareUrl;
         this.elements.shareResult.classList.remove('hidden');
         // Update the main link in header too
