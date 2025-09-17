@@ -2,7 +2,7 @@
   "outputDirectory": ".",
   "rewrites": [
     {
-      "source": "/((?!api).*)",
+      "source": "/((?!api|styles\\.css|app\\.js|favicon\\.ico).*)",
       "destination": "/index.html"
     }
   ]
